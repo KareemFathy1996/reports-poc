@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset Selection POC</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Dataset Selection</h1>
+        
+        <p class="introduction">Select one or more datasets and apply the required filters. For required filters, you only need to select <strong>at least one</strong> from each category. Each dataset will provide JSON reference placeholders for use in your reports.</p>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="dataset-grid" id="datasetGrid">
+            <!-- Dataset cards will be inserted here dynamically -->
+        </div>
+        
+        <div id="selectionSummary" class="selection-summary">
+            <!-- Selection summary will be generated dynamically -->
+        </div>
+    </div>
+
+    <script src="filter-helpers.js"></script>
+    <script src="data.js"></script>
+    <script src="scripts.js"></script>
+</body>
+</html>
