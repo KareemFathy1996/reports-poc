@@ -1,9 +1,19 @@
 // Function to display the JSON references screen
 function showJsonReferences() {
-  // Check if generation filter is selected
+  // Check if generation filter is selected and validate it
   const generationFilter = reportFiltersInstance.getGenerationFilter();
+  const generationFilterValue = reportFiltersInstance.getGenerationFilterValue();
+  
+  // Validate the filter before proceeding
   if (!generationFilter) {
     showMessage('Please select the required generation filter', 'error');
+    return;
+  }
+  
+  // If the filter requires a value, validate that too
+  if (reportFiltersInstance.filterRequiresValue(generationFilter) && 
+      (!generationFilterValue || generationFilterValue.trim() === '')) {
+    showMessage(`Please enter a value for the ${reportFiltersInstance.getFilterLabel(generationFilter)}`, 'error');
     return;
   }
   
@@ -27,6 +37,7 @@ function showJsonReferences() {
   
   const filterForm = document.createElement('form');
   filterForm.className = 'filter-form';
+  filterForm.onsubmit = (e) => e.preventDefault(); // Prevent form submission
   
   // Generation filter select
   const filterTypeGroup = document.createElement('div');
@@ -76,17 +87,34 @@ function showJsonReferences() {
   filterValueInput.type = 'text';
   filterValueInput.id = 'dataViewFilterValue';
   filterValueInput.className = 'filter-input';
-  filterValueInput.placeholder = 'Enter filter value';
+  
+  // Set placeholder based on filter type
+  if (generationFilter === 'studentId') {
+    filterValueInput.placeholder = 'Enter Student ID';
+  } else if (generationFilter === 'academicYear') {
+    filterValueInput.placeholder = 'Enter Academic Year (e.g. 2023-2024)';
+  } else {
+    filterValueInput.placeholder = 'Enter filter value';
+  }
+  
   // Set current value if exists
-  if (reportFiltersInstance.getGenerationFilterValue()) {
-    filterValueInput.value = reportFiltersInstance.getGenerationFilterValue();
+  if (generationFilterValue) {
+    filterValueInput.value = generationFilterValue;
   }
   
   filterValueGroup.appendChild(filterValueInput);
+  
+  // Add error message
+  const filterValueError = document.createElement('div');
+  filterValueError.id = 'dataViewFilterError';
+  filterValueError.className = 'filter-value-error';
+  filterValueError.textContent = 'Please enter a valid value';
+  filterValueGroup.appendChild(filterValueError);
+  
   filterForm.appendChild(filterValueGroup);
   
   // Only show value input for filters that need it
-  if (generationFilter !== 'studentId' && generationFilter !== 'academicYear') {
+  if (!reportFiltersInstance.filterRequiresValue(generationFilter)) {
     filterValueGroup.style.display = 'none';
   }
   
@@ -103,15 +131,22 @@ function showJsonReferences() {
   filterForm.appendChild(applyButtonGroup);
   filterControlsSection.appendChild(filterForm);
   
+  // Add success message element that will be shown when filter is applied
+  const filterSuccessMessage = document.createElement('div');
+  filterSuccessMessage.id = 'filterSuccessMessage';
+  filterSuccessMessage.className = 'filter-success';
+  filterSuccessMessage.textContent = 'Filter applied successfully';
+  filterControlsSection.appendChild(filterSuccessMessage);
+  
   // Add the filter controls to the container
   container.appendChild(filterControlsSection);
   
-  // Display filter info
+  // Display current filter info
   const currentFilterInfo = document.createElement('div');
   currentFilterInfo.id = 'currentFilterInfo';
   currentFilterInfo.className = 'generation-filter-info';
   
-  updateCurrentFilterDisplay(currentFilterInfo, generationFilter, reportFiltersInstance.getGenerationFilterValue());
+  updateCurrentFilterDisplay(currentFilterInfo, generationFilter, generationFilterValue);
   
   container.appendChild(currentFilterInfo);
   
@@ -127,14 +162,27 @@ function showJsonReferences() {
   filterTypeSelect.addEventListener('change', function() {
     const selectedFilter = this.value;
     
+    // Reset error state
+    filterValueInput.classList.remove('error');
+    filterValueError.classList.remove('show');
+    
     // Toggle visibility of the value input based on filter type
-    if (selectedFilter === 'studentId' || selectedFilter === 'academicYear') {
+    if (reportFiltersInstance.filterRequiresValue(selectedFilter)) {
       filterValueGroup.style.display = 'block';
+      
       // Update placeholder text
       if (selectedFilter === 'studentId') {
         filterValueInput.placeholder = 'Enter Student ID';
-      } else {
+      } else if (selectedFilter === 'academicYear') {
         filterValueInput.placeholder = 'Enter Academic Year (e.g. 2023-2024)';
+      } else {
+        filterValueInput.placeholder = 'Enter filter value';
+      }
+      
+      // Clear the input if switching between different filter types
+      if (!reportFiltersInstance.filterRequiresValue(generationFilter) || 
+          generationFilter !== selectedFilter) {
+        filterValueInput.value = '';
       }
     } else {
       filterValueGroup.style.display = 'none';
@@ -144,17 +192,32 @@ function showJsonReferences() {
   applyButton.addEventListener('click', function() {
     const selectedFilter = filterTypeSelect.value;
     let filterValue = null;
+    let isValid = true;
     
-    if (selectedFilter === 'studentId' || selectedFilter === 'academicYear') {
+    // Hide success message
+    filterSuccessMessage.classList.remove('show');
+    
+    if (reportFiltersInstance.filterRequiresValue(selectedFilter)) {
       filterValue = filterValueInput.value.trim();
+      
       if (!filterValue) {
         // Show validation error
-        filterValueInput.style.borderColor = '#ff4d4f';
-        return;
+        filterValueInput.classList.add('error');
+        filterValueError.classList.add('show');
+        isValid = false;
       } else {
-        filterValueInput.style.borderColor = '';
+        // Clear validation error
+        filterValueInput.classList.remove('error');
+        filterValueError.classList.remove('show');
       }
     }
+    
+    if (!isValid) {
+      return;
+    }
+    
+    // Apply loading state
+    referencesContent.classList.add('loading');
     
     // Update the filter in the reportFiltersInstance
     reportFiltersInstance.generationFilter = selectedFilter;
@@ -163,8 +226,19 @@ function showJsonReferences() {
     // Update current filter display
     updateCurrentFilterDisplay(document.getElementById('currentFilterInfo'), selectedFilter, filterValue);
     
-    // Re-render the references
-    renderReferences(document.getElementById('referencesContent'));
+    // Re-render the references with a small delay to show loading transition
+    setTimeout(() => {
+      renderReferences(document.getElementById('referencesContent'));
+      referencesContent.classList.remove('loading');
+      
+      // Show success message
+      filterSuccessMessage.classList.add('show');
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        filterSuccessMessage.classList.remove('show');
+      }, 3000);
+    }, 300);
   });
   
   // Back button
@@ -211,170 +285,4 @@ function updateCurrentFilterDisplay(container, filterType, filterValue) {
   html += `<p class="note">Data is filtered according to these criteria. You can change the filter above.</p>`;
   
   container.innerHTML = html;
-}
-
-// Function to render references based on current filters
-function renderReferences(container) {
-  container.innerHTML = ''; // Clear existing content
-  
-  const description = document.createElement('p');
-  description.className = 'json-description';
-  description.textContent = 'Use these JSON references as placeholders in your tables. Each field reference can be used to display specific data points. They will be replaced with real data when generating reports.';
-  container.appendChild(description);
-  
-  const jsonGrid = document.createElement('div');
-  jsonGrid.className = 'json-grid';
-  
-  // For each selected dataset ID, find the complete dataset from the original array
-  const completeSelectedDatasets = selectedDatasets.map(selectedDs => {
-    // Check if this is already a complete dataset object with jsonReference
-    if (selectedDs.jsonReference && selectedDs.jsonReference.fieldReferences) {
-      return selectedDs;
-    }
-    
-    // Otherwise, find the complete dataset in the original array
-    return datasets.find(ds => ds.id === selectedDs.id) || selectedDs;
-  });
-  
-  completeSelectedDatasets.forEach(dataset => {
-    // Ensure the dataset has field references
-    const processedDataset = generateFieldReferences(dataset);
-    
-    const jsonCard = document.createElement('div');
-    jsonCard.className = 'json-card';
-    
-    const title = document.createElement('h3');
-    title.textContent = processedDataset.name;
-    jsonCard.appendChild(title);
-    
-    // Selected filters summary
-    const filters = selectedFiltersMap[processedDataset.id] || { academicYears: [], userTypes: [] };
-    
-    const filtersSummary = document.createElement('div');
-    filtersSummary.className = 'filters-summary';
-    
-    const academicYearsText = document.createElement('p');
-    academicYearsText.innerHTML = `<strong>Academic Years:</strong> ${filters.academicYears.join(', ') || 'None'}`;
-    filtersSummary.appendChild(academicYearsText);
-    
-    const userTypesText = document.createElement('p');
-    userTypesText.innerHTML = `<strong>User Types:</strong> ${filters.userTypes.join(', ') || 'None'}`;
-    filtersSummary.appendChild(userTypesText);
-    
-    jsonCard.appendChild(filtersSummary);
-    
-    // Field references table
-    if (processedDataset.jsonReference && processedDataset.jsonReference.fieldReferences) {
-      const fieldReferencesSection = document.createElement('div');
-      fieldReferencesSection.className = 'field-references-section';
-      
-      const fieldReferencesTitle = document.createElement('h4');
-      fieldReferencesTitle.textContent = 'Field References:';
-      fieldReferencesSection.appendChild(fieldReferencesTitle);
-      
-      const fieldReferencesTable = document.createElement('table');
-      fieldReferencesTable.className = 'field-references-table';
-      
-      // Table header
-      const tableHeader = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      
-      const pathHeader = document.createElement('th');
-      pathHeader.textContent = 'Reference Path';
-      headerRow.appendChild(pathHeader);
-      
-      const descHeader = document.createElement('th');
-      descHeader.textContent = 'Description';
-      headerRow.appendChild(descHeader);
-      
-      tableHeader.appendChild(headerRow);
-      fieldReferencesTable.appendChild(tableHeader);
-      
-      // Table body
-      const tableBody = document.createElement('tbody');
-      
-      // Add table rows for each field reference
-      const fieldRefs = processedDataset.jsonReference.fieldReferences;
-      if (fieldRefs && fieldRefs.length > 0) {
-        fieldRefs.forEach(fieldRef => {
-          const row = document.createElement('tr');
-          
-          const pathCell = document.createElement('td');
-          pathCell.className = 'reference-path';
-          pathCell.textContent = fieldRef.path;
-          pathCell.addEventListener('click', () => {
-            // Copy to clipboard
-            navigator.clipboard.writeText(fieldRef.path)
-              .then(() => {
-                // Visual feedback for copy
-                pathCell.classList.add('copied');
-                setTimeout(() => {
-                  pathCell.classList.remove('copied');
-                }, 1000);
-              })
-              .catch(err => {
-                console.error('Could not copy text: ', err);
-              });
-          });
-          row.appendChild(pathCell);
-          
-          const descCell = document.createElement('td');
-          descCell.textContent = fieldRef.description;
-          row.appendChild(descCell);
-          
-          tableBody.appendChild(row);
-        });
-      } else {
-        // If no field references, add a message
-        const emptyRow = document.createElement('tr');
-        const emptyCell = document.createElement('td');
-        emptyCell.colSpan = 2;
-        emptyCell.textContent = 'No field references available';
-        emptyCell.style.textAlign = 'center';
-        emptyRow.appendChild(emptyCell);
-        tableBody.appendChild(emptyRow);
-      }
-      
-      fieldReferencesTable.appendChild(tableBody);
-      fieldReferencesSection.appendChild(fieldReferencesTable);
-      
-      // Add copy info text
-      const copyInfo = document.createElement('p');
-      copyInfo.className = 'copy-info';
-      copyInfo.textContent = 'Click on any reference path to copy to clipboard';
-      fieldReferencesSection.appendChild(copyInfo);
-      
-      jsonCard.appendChild(fieldReferencesSection);
-    } else {
-      // Fallback if no field references available
-      const noRefsMessage = document.createElement('div');
-      noRefsMessage.className = 'no-refs-message';
-      noRefsMessage.textContent = 'No field references available for this dataset.';
-      jsonCard.appendChild(noRefsMessage);
-    }
-    
-    // Full Sample Data
-    const sampleSection = document.createElement('div');
-    sampleSection.className = 'sample-section';
-    
-    const sampleTitle = document.createElement('h4');
-    sampleTitle.textContent = 'Full Data Structure:';
-    sampleSection.appendChild(sampleTitle);
-    
-    const sampleValue = document.createElement('pre');
-    sampleValue.className = 'sample-value';
-    if (processedDataset.jsonReference && processedDataset.jsonReference.sampleData) {
-      // Show the full data structure, not just a sample
-      sampleValue.textContent = JSON.stringify(processedDataset.jsonReference.sampleData, null, 2);
-    } else {
-      sampleValue.textContent = 'No data available';
-    }
-    sampleSection.appendChild(sampleValue);
-    
-    jsonCard.appendChild(sampleSection);
-    
-    jsonGrid.appendChild(jsonCard);
-  });
-  
-  container.appendChild(jsonGrid);
 }

@@ -879,3 +879,105 @@ h1 {
   box-shadow: 0 0 0 2px rgba(74, 107, 175, 0.1);
   outline: none;
 }
+/* Error states and validation styling */
+.filter-input.error {
+  border-color: #ff4d4f;
+  background-color: #fff2f0;
+}
+
+.filter-value-error {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
+}
+
+.filter-value-error.show {
+  display: block;
+}
+
+/* Success message styling */
+.filter-success {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.filter-success.show {
+  opacity: 1;
+}
+
+.filter-success:before {
+  content: '✓';
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+/* Loading state styling */
+#referencesContent {
+  transition: opacity 0.3s ease;
+}
+
+#referencesContent.loading {
+  opacity: 0.6;
+}
+
+/* Visual feedback on filter changes */
+.filter-controls-section {
+  transition: background-color 0.3s ease;
+}
+
+.filter-controls-section.highlight {
+  background-color: #f0f9ff;
+}
+
+/* Improve spacing and alignment */
+.filter-form {
+  margin-bottom: 10px;
+}
+
+.filter-form .form-group {
+  margin-bottom: 15px;
+}
+
+.filter-form .button-group {
+  margin-bottom: 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Improve visibility of the current filter info */
+.generation-filter-info {
+  margin-top: 15px;
+  border-left-width: 4px;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
+/* Style for item in selection summary */
+.selection-filter-item.generation-required {
+  background-color: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+/* Warning message style */
+.message.warning {
+  background-color: #fffbe6;
+  border: 1px solid #ffe58f;
+  color: #faad14;
+  display: block;
+}

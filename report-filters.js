@@ -1,16 +1,20 @@
 class ReportFilters {
   constructor() {
     this.userFilters = [];
-    this.generationFilter = null; // New property for the required generation filter
+    this.generationFilter = null; // Current filter type
     this.generationFilterValue = null; // Value for the generation filter (e.g., student ID)
     this.requiredGenerationFilter = null; // Which filter is required based on selected datasets
     
     // Define generation filter labels
     this.filterLabels = {
       'studentId': 'Student ID',
+      'academicYear': 'Academic Year',
       'currentYear': 'Current Year Only',
       'verifiedData': 'Verified Data Only'
     };
+    
+    // Track which filters require values
+    this.filtersRequiringValues = ['studentId', 'academicYear'];
   }
 
   initialize() {
@@ -31,12 +35,33 @@ class ReportFilters {
     // Auto-select this filter if it's required and not already selected
     if (filterType && this.generationFilter !== filterType) {
       this.generationFilter = filterType;
+      
+      // Clear the filter value when switching to a different filter type
+      if (this.filtersRequiringValues.includes(filterType)) {
+        this.generationFilterValue = ''; // Reset to empty to force user input
+      }
     }
   }
   
   // Get the human-readable label for a filter
   getFilterLabel(filterValue) {
     return this.filterLabels[filterValue] || filterValue;
+  }
+  
+  // Check if a filter requires a value
+  filterRequiresValue(filterType) {
+    return this.filtersRequiringValues.includes(filterType);
+  }
+  
+  // Validate the current filter and value
+  isFilterValid() {
+    // For filters requiring values, check if the value is not empty
+    if (this.filterRequiresValue(this.generationFilter)) {
+      return this.generationFilterValue && this.generationFilterValue.trim() !== '';
+    }
+    
+    // For filters not requiring values, just check if a filter is selected
+    return !!this.generationFilter;
   }
   
   // Add CSS for generation filter message
@@ -85,6 +110,22 @@ class ReportFilters {
         outline: none;
         box-shadow: 0 0 0 2px rgba(74, 107, 175, 0.2);
       }
+
+      .student-id-input.error {
+        border-color: #ff4d4f;
+        background-color: #fff2f0;
+      }
+
+      .filter-value-error {
+        color: #ff4d4f;
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+      }
+
+      .filter-value-error.show {
+        display: block;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -94,7 +135,10 @@ class ReportFilters {
     if (!summaryContainer) return;
     
     // Check if filters section already exists to avoid duplication
-    if (summaryContainer.querySelector('.report-filters-section')) return;
+    const existingSection = summaryContainer.querySelector('.report-filters-section');
+    if (existingSection) {
+      existingSection.remove();
+    }
     
     const filtersSection = document.createElement('div');
     filtersSection.className = 'report-filters-section';
@@ -110,6 +154,7 @@ class ReportFilters {
           <input type="text" id="studentIdInput" class="student-id-input" 
                 required placeholder="Enter Student ID" 
                 value="${this.generationFilterValue || ''}">
+          <div id="studentIdError" class="filter-value-error">Please enter a Student ID</div>
         </div>
       `;
     } else {
@@ -132,9 +177,12 @@ class ReportFilters {
           </select>
         </div>
         
-        <div id="filterValueContainer" class="form-group" style="display: none;">
+        <div id="filterValueContainer" class="form-group" style="display: ${this.filterRequiresValue(this.generationFilter) ? 'block' : 'none'};">
           <label for="filterValueInput">Filter Value *</label>
-          <input type="text" id="filterValueInput" class="student-id-input" placeholder="Enter filter value">
+          <input type="text" id="filterValueInput" class="student-id-input" 
+                 placeholder="Enter filter value"
+                 value="${this.generationFilterValue || ''}">
+          <div id="filterValueError" class="filter-value-error">Please enter a value</div>
         </div>
       `;
     }
@@ -158,18 +206,71 @@ class ReportFilters {
     const filterValueContainer = document.getElementById('filterValueContainer');
     if (!filterValueContainer) return;
     
-    // Only show the value input for student ID filter
-    if (this.generationFilter === 'studentId') {
+    // Only show the value input for filters that require values
+    if (this.filterRequiresValue(this.generationFilter)) {
       filterValueContainer.style.display = 'block';
       
-      // Set value if we have one
+      // Update placeholder based on filter type
       const filterValueInput = document.getElementById('filterValueInput');
-      if (filterValueInput && this.generationFilterValue) {
-        filterValueInput.value = this.generationFilterValue;
+      if (filterValueInput) {
+        if (this.generationFilter === 'studentId') {
+          filterValueInput.placeholder = 'Enter Student ID';
+        } else if (this.generationFilter === 'academicYear') {
+          filterValueInput.placeholder = 'Enter Academic Year (e.g. 2023-2024)';
+        }
+        
+        // Set value if we have one
+        if (this.generationFilterValue) {
+          filterValueInput.value = this.generationFilterValue;
+        }
       }
     } else {
       filterValueContainer.style.display = 'none';
     }
+    
+    // Update proceed button state
+    this.updateProceedButtonState();
+  }
+  
+  updateProceedButtonState() {
+    const proceedButton = document.getElementById('proceedButton');
+    if (!proceedButton) return;
+    
+    // Check if the current filter is valid
+    const isFilterValid = this.isFilterValid();
+    
+    // Get validation error elements
+    const studentIdError = document.getElementById('studentIdError');
+    const filterValueError = document.getElementById('filterValueError');
+    
+    // Get input elements
+    const studentIdInput = document.getElementById('studentIdInput');
+    const filterValueInput = document.getElementById('filterValueInput');
+    
+    // Update error display for studentId specific UI
+    if (this.requiredGenerationFilter === "studentId" && studentIdInput && studentIdError) {
+      if (this.generationFilterValue && this.generationFilterValue.trim() !== '') {
+        studentIdInput.classList.remove('error');
+        studentIdError.classList.remove('show');
+      } else {
+        studentIdInput.classList.add('error');
+        studentIdError.classList.add('show');
+      }
+    }
+    
+    // Update error display for general filter UI
+    if (filterValueInput && filterValueError && this.filterRequiresValue(this.generationFilter)) {
+      if (this.generationFilterValue && this.generationFilterValue.trim() !== '') {
+        filterValueInput.classList.remove('error');
+        filterValueError.classList.remove('show');
+      } else {
+        filterValueInput.classList.add('error');
+        filterValueError.classList.add('show');
+      }
+    }
+    
+    // Update button state
+    proceedButton.disabled = !isFilterValid;
   }
 
   setupEventListeners() {
@@ -186,6 +287,10 @@ class ReportFilters {
         newStudentIdInput.addEventListener('input', (e) => {
           this.generationFilter = "studentId";
           this.generationFilterValue = e.target.value.trim();
+          
+          // Update validation state
+          this.updateProceedButtonState();
+          
           // Call the global updateSelectionSummary function if it exists
           if (typeof updateSelectionSummary === 'function') {
             updateSelectionSummary();
@@ -202,9 +307,19 @@ class ReportFilters {
         }
         
         newGenFilterSelect.addEventListener('change', () => {
+          const previousFilter = this.generationFilter;
           this.generationFilter = newGenFilterSelect.value;
+          
+          // If switching between filter types that require values, preserve the value
+          // Otherwise, reset the value
+          if (!this.filterRequiresValue(previousFilter) || 
+              !this.filterRequiresValue(this.generationFilter)) {
+            this.generationFilterValue = '';
+          }
+          
           // Update the visibility of the filter value input
           this.updateFilterValueVisibility();
+          
           // Call the global updateSelectionSummary function if it exists
           if (typeof updateSelectionSummary === 'function') {
             updateSelectionSummary();
@@ -222,6 +337,10 @@ class ReportFilters {
         
         newFilterValueInput.addEventListener('input', (e) => {
           this.generationFilterValue = e.target.value.trim();
+          
+          // Update validation state
+          this.updateProceedButtonState();
+          
           // Call the global updateSelectionSummary function if it exists
           if (typeof updateSelectionSummary === 'function') {
             updateSelectionSummary();
