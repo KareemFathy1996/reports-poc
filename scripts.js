@@ -587,3 +587,42 @@ function showMessage(text, type) {
 document.addEventListener('DOMContentLoaded', () => {
     initializeDatasetGrid();
 });
+// Add navigation for different POCs
+function initializeNavigation() {
+    const nav = document.createElement('nav');
+    nav.className = 'poc-navigation';
+    nav.innerHTML = `
+      <button id="datasetSelectionPoc" class="btn btn-nav active">Dataset Selection</button>
+      <button id="datasetCreationPoc" class="btn btn-nav">Create Dataset</button>
+      <button id="filterCreationPoc" class="btn btn-nav">Create Filter</button>
+    `;
+    
+    document.querySelector('.container').prepend(nav);
+    
+    // Event listeners for navigation
+    document.getElementById('datasetSelectionPoc').addEventListener('click', () => {
+      window.location.reload();
+    });
+    
+    document.getElementById('datasetCreationPoc').addEventListener('click', () => {
+      const creator = new DatasetCreator();
+      creator.initialize();
+    });
+    
+    document.getElementById('filterCreationPoc').addEventListener('click', () => {
+      const creator = new FilterCreator();
+      creator.initialize();
+    });
+  }
+  
+  // Update the DOMContentLoaded event listener
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeDatasetGrid();
+    initializeNavigation();
+    
+    // Initialize report filters if on selection page
+    if (document.getElementById('datasetGrid')) {
+      const reportFilters = new ReportFilters();
+      reportFilters.initialize();
+    }
+  });

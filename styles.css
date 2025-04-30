@@ -414,3 +414,108 @@ h1 {
   text-align: center;
   font-style: italic;
 }
+/* Navigation Styles */
+.poc-navigation {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.btn-nav {
+  background-color: #e4e7ed;
+  color: #606266;
+}
+
+.btn-nav.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group textarea {
+  min-height: 100px;
+}
+
+.filter-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.filter-input-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-input-item input {
+  flex-grow: 1;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.btn-remove {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Report Filters Styles */
+.report-filters-section {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.report-filters-section h4 {
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+.user-filter-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.user-filter-item select {
+  flex: 1;
+}
+
+.user-filter-item input {
+  flex: 2;
+}
