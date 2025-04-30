@@ -1,5 +1,15 @@
 // Function to display the JSON references screen
 function showJsonReferences() {
+  // Check if generation filter is selected
+  const generationFilter = reportFiltersInstance.getGenerationFilter();
+  if (!generationFilter) {
+    showMessage('Please select the required generation filter', 'error');
+    return;
+  }
+  
+  // Also get any user filters
+  const userFilters = reportFiltersInstance.getUserFilters();
+
   const container = document.querySelector('.container');
   container.innerHTML = '';
   
@@ -7,85 +17,155 @@ function showJsonReferences() {
   header.textContent = 'Dataset JSON References';
   container.appendChild(header);
   
-  // Get the required generation filters
-  const requiredFilters = window.requiredGenerationFilters || [];
+  // Create filter controls section
+  const filterControlsSection = document.createElement('div');
+  filterControlsSection.className = 'filter-controls-section';
   
-  // Create the generation filters form
-  if (requiredFilters.length > 0) {
-    const filtersForm = document.createElement('div');
-    filtersForm.className = 'generation-filters-form';
-    
-    const formTitle = document.createElement('h3');
-    formTitle.textContent = 'Required Generation Filters';
-    filtersForm.appendChild(formTitle);
-    
-    const formDesc = document.createElement('p');
-    formDesc.textContent = 'Enter values for the required filters to generate the report:';
-    filtersForm.appendChild(formDesc);
-    
-    // Create input fields for each required filter
-    const inputsContainer = document.createElement('div');
-    inputsContainer.className = 'filter-inputs-container';
-    
-    requiredFilters.forEach(filter => {
-      const filterGroup = document.createElement('div');
-      filterGroup.className = 'filter-input-group';
-      
-      const filterLabel = document.createElement('label');
-      filterLabel.setAttribute('for', `filter-${filter}`);
-      
-      // Use human-readable labels
-      if (filter === 'studentId') {
-        filterLabel.textContent = 'Student ID:';
-      } else if (filter === 'academicYear') {
-        filterLabel.textContent = 'Academic Year:';
-      } else {
-        filterLabel.textContent = `${filter}:`;
-      }
-      
-      filterGroup.appendChild(filterLabel);
-      
-      const filterInput = document.createElement('input');
-      filterInput.type = 'text';
-      filterInput.id = `filter-${filter}`;
-      filterInput.className = 'generation-filter-input';
-      filterInput.setAttribute('data-filter', filter);
-      filterInput.required = true;
-      
-      // Add placeholder based on filter type
-      if (filter === 'studentId') {
-        filterInput.placeholder = 'Enter Student ID';
-      } else if (filter === 'academicYear') {
-        filterInput.placeholder = 'Enter Academic Year (e.g. 2023-2024)';
-      }
-      
-      filterGroup.appendChild(filterInput);
-      inputsContainer.appendChild(filterGroup);
-    });
-    
-    filtersForm.appendChild(inputsContainer);
-    
-    // Add a generate button
-    const generateButton = document.createElement('button');
-    generateButton.className = 'btn btn-primary';
-    generateButton.id = 'generateButton';
-    generateButton.textContent = 'Generate References';
-    generateButton.addEventListener('click', generateReferences);
-    
-    filtersForm.appendChild(generateButton);
-    
-    container.appendChild(filtersForm);
-    
-    // Add a div for displaying the generated references
-    const referencesContainer = document.createElement('div');
-    referencesContainer.id = 'referencesContainer';
-    referencesContainer.className = 'references-container';
-    referencesContainer.style.display = 'none'; // Initially hidden
-    container.appendChild(referencesContainer);
-  } else {
-    // If no required filters, show references directly
-    displayReferences(container, {});
+  const filterControlsTitle = document.createElement('h3');
+  filterControlsTitle.textContent = 'Applied Filters';
+  filterControlsSection.appendChild(filterControlsTitle);
+  
+  const filterForm = document.createElement('form');
+  filterForm.className = 'filter-form';
+  
+  // Generation filter select
+  const filterTypeGroup = document.createElement('div');
+  filterTypeGroup.className = 'form-group';
+  
+  const filterTypeLabel = document.createElement('label');
+  filterTypeLabel.setAttribute('for', 'dataViewFilterType');
+  filterTypeLabel.textContent = 'Filter Type:';
+  filterTypeGroup.appendChild(filterTypeLabel);
+  
+  const filterTypeSelect = document.createElement('select');
+  filterTypeSelect.id = 'dataViewFilterType';
+  filterTypeSelect.className = 'filter-select';
+  
+  // Add filter options
+  const filterOptions = {
+    'studentId': 'Student ID',
+    'academicYear': 'Academic Year',
+    'currentYear': 'Current Year Only',
+    'verifiedData': 'Verified Data Only'
+  };
+  
+  Object.entries(filterOptions).forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    if (value === generationFilter) {
+      option.selected = true;
+    }
+    filterTypeSelect.appendChild(option);
+  });
+  
+  filterTypeGroup.appendChild(filterTypeSelect);
+  filterForm.appendChild(filterTypeGroup);
+  
+  // Filter value input (only shown for filters that need a value)
+  const filterValueGroup = document.createElement('div');
+  filterValueGroup.className = 'form-group';
+  filterValueGroup.id = 'filterValueGroup';
+  
+  const filterValueLabel = document.createElement('label');
+  filterValueLabel.setAttribute('for', 'dataViewFilterValue');
+  filterValueLabel.textContent = 'Filter Value:';
+  filterValueGroup.appendChild(filterValueLabel);
+  
+  const filterValueInput = document.createElement('input');
+  filterValueInput.type = 'text';
+  filterValueInput.id = 'dataViewFilterValue';
+  filterValueInput.className = 'filter-input';
+  filterValueInput.placeholder = 'Enter filter value';
+  // Set current value if exists
+  if (reportFiltersInstance.getGenerationFilterValue()) {
+    filterValueInput.value = reportFiltersInstance.getGenerationFilterValue();
   }
+  
+  filterValueGroup.appendChild(filterValueInput);
+  filterForm.appendChild(filterValueGroup);
+  
+  // Only show value input for filters that need it
+  if (generationFilter !== 'studentId' && generationFilter !== 'academicYear') {
+    filterValueGroup.style.display = 'none';
+  }
+  
+  // Add apply button
+  const applyButtonGroup = document.createElement('div');
+  applyButtonGroup.className = 'form-group button-group';
+  
+  const applyButton = document.createElement('button');
+  applyButton.type = 'button';
+  applyButton.className = 'btn btn-primary';
+  applyButton.textContent = 'Apply Filter';
+  applyButtonGroup.appendChild(applyButton);
+  
+  filterForm.appendChild(applyButtonGroup);
+  filterControlsSection.appendChild(filterForm);
+  
+  // Add the filter controls to the container
+  container.appendChild(filterControlsSection);
+  
+  // Display filter info
+  const currentFilterInfo = document.createElement('div');
+  currentFilterInfo.id = 'currentFilterInfo';
+  currentFilterInfo.className = 'generation-filter-info';
+  
+  updateCurrentFilterDisplay(currentFilterInfo, generationFilter, reportFiltersInstance.getGenerationFilterValue());
+  
+  container.appendChild(currentFilterInfo);
+  
+  // Create a div for the references content that will be updated when filters change
+  const referencesContent = document.createElement('div');
+  referencesContent.id = 'referencesContent';
+  container.appendChild(referencesContent);
+  
+  // Initial render of the references
+  renderReferences(referencesContent);
+  
+  // Add event listeners for the filter controls
+  filterTypeSelect.addEventListener('change', function() {
+    const selectedFilter = this.value;
+    
+    // Toggle visibility of the value input based on filter type
+    if (selectedFilter === 'studentId' || selectedFilter === 'academicYear') {
+      filterValueGroup.style.display = 'block';
+      // Update placeholder text
+      if (selectedFilter === 'studentId') {
+        filterValueInput.placeholder = 'Enter Student ID';
+      } else {
+        filterValueInput.placeholder = 'Enter Academic Year (e.g. 2023-2024)';
+      }
+    } else {
+      filterValueGroup.style.display = 'none';
+    }
+  });
+  
+  applyButton.addEventListener('click', function() {
+    const selectedFilter = filterTypeSelect.value;
+    let filterValue = null;
+    
+    if (selectedFilter === 'studentId' || selectedFilter === 'academicYear') {
+      filterValue = filterValueInput.value.trim();
+      if (!filterValue) {
+        // Show validation error
+        filterValueInput.style.borderColor = '#ff4d4f';
+        return;
+      } else {
+        filterValueInput.style.borderColor = '';
+      }
+    }
+    
+    // Update the filter in the reportFiltersInstance
+    reportFiltersInstance.generationFilter = selectedFilter;
+    reportFiltersInstance.generationFilterValue = filterValue;
+    
+    // Update current filter display
+    updateCurrentFilterDisplay(document.getElementById('currentFilterInfo'), selectedFilter, filterValue);
+    
+    // Re-render the references
+    renderReferences(document.getElementById('referencesContent'));
+  });
   
   // Back button
   const backButton = document.createElement('button');
@@ -102,69 +182,40 @@ function showJsonReferences() {
   container.appendChild(buttonContainer);
 }
 
-// Function to handle the generation of references based on filter inputs
-function generateReferences() {
-  // Collect values from the filter inputs
-  const filterValues = {};
-  const inputs = document.querySelectorAll('.generation-filter-input');
-  let allValid = true;
-  
-  inputs.forEach(input => {
-    const filter = input.getAttribute('data-filter');
-    const value = input.value.trim();
-    
-    if (!value) {
-      input.classList.add('input-error');
-      allValid = false;
-    } else {
-      input.classList.remove('input-error');
-      filterValues[filter] = value;
-    }
-  });
-  
-  if (!allValid) {
-    alert('Please fill in all required filter values.');
-    return;
+// Function to update the current filter display
+function updateCurrentFilterDisplay(container, filterType, filterValue) {
+  // Get human-readable filter name
+  let filterLabel = filterType;
+  switch (filterType) {
+    case 'studentId':
+      filterLabel = 'Student ID';
+      break;
+    case 'academicYear':
+      filterLabel = 'Academic Year';
+      break;
+    case 'currentYear':
+      filterLabel = 'Current Year Only';
+      break;
+    case 'verifiedData':
+      filterLabel = 'Verified Data Only';
+      break;
   }
   
-  // Display the references with the filter values
-  const referencesContainer = document.getElementById('referencesContainer');
-  referencesContainer.innerHTML = ''; // Clear any existing content
-  referencesContainer.style.display = 'block';
+  let html = `<p><strong>Applied Filter:</strong> ${filterLabel}</p>`;
   
-  // Hide the filters form
-  const filtersForm = document.querySelector('.generation-filters-form');
-  if (filtersForm) {
-    filtersForm.style.display = 'none';
+  // Add value if applicable
+  if (filterValue && (filterType === 'studentId' || filterType === 'academicYear')) {
+    html += `<p><strong>Value:</strong> ${filterValue}</p>`;
   }
   
-  displayReferences(referencesContainer, filterValues);
+  html += `<p class="note">Data is filtered according to these criteria. You can change the filter above.</p>`;
+  
+  container.innerHTML = html;
 }
 
-// Function to display the references based on filter values
-function displayReferences(container, filterValues) {
-  // Display the filter values that were entered
-  if (Object.keys(filterValues).length > 0) {
-    const filterInfo = document.createElement('div');
-    filterInfo.className = 'generation-filter-info';
-    
-    let filterInfoContent = '<h4>Applied Filters:</h4><ul>';
-    
-    Object.entries(filterValues).forEach(([filter, value]) => {
-      let filterLabel = filter;
-      // Use human-readable labels
-      if (filter === 'studentId') filterLabel = 'Student ID';
-      if (filter === 'academicYear') filterLabel = 'Academic Year';
-      
-      filterInfoContent += `<li><strong>${filterLabel}:</strong> ${value}</li>`;
-    });
-    
-    filterInfoContent += '</ul>';
-    filterInfoContent += '<p class="note">Note: The data shown below is filtered according to these criteria.</p>';
-    
-    filterInfo.innerHTML = filterInfoContent;
-    container.appendChild(filterInfo);
-  }
+// Function to render references based on current filters
+function renderReferences(container) {
+  container.innerHTML = ''; // Clear existing content
   
   const description = document.createElement('p');
   description.className = 'json-description';
