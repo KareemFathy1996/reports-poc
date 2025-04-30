@@ -1,6 +1,7 @@
 // Global variables to store selected datasets and filters
 let selectedDatasets = [];
 let selectedFiltersMap = {}; // Map of dataset ID to selected filters
+let reportFiltersInstance; // Global instance of ReportFilters
 
 // Function to initialize the dataset grid
 function initializeDatasetGrid() {
@@ -243,12 +244,44 @@ function updateSelectionSummary() {
     header.textContent = 'Selection Summary';
     summaryContainer.appendChild(header);
     
+    // Create Report Filters section first
+    reportFiltersInstance.renderFiltersSection();
+    reportFiltersInstance.setupEventListeners();
+    
+    // Check if generation filter is selected
+    const generationFilter = reportFiltersInstance.getGenerationFilter();
+    let allRequiredFiltersSelected = !!generationFilter; // Start with false if no generation filter
+    
+    // If no generation filter is selected, don't show dataset details yet
+    if (!generationFilter) {
+        // Add a specific message about needing the generation filter
+        const filterMessage = document.createElement('div');
+        filterMessage.className = 'generation-filter-message';
+        filterMessage.textContent = 'Please select a required generation filter to continue.';
+        summaryContainer.appendChild(filterMessage);
+        
+        // Add the proceed button (disabled)
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'button-container';
+        
+        const proceedButton = document.createElement('button');
+        proceedButton.className = 'btn btn-primary';
+        proceedButton.id = 'proceedButton';
+        proceedButton.textContent = 'Proceed with Selection';
+        proceedButton.disabled = true;
+        proceedButton.addEventListener('click', showJsonReferences);
+        
+        buttonContainer.appendChild(proceedButton);
+        summaryContainer.appendChild(buttonContainer);
+        
+        showMessage('Please select the required generation filter', 'error');
+        return; // Exit early - don't show dataset cards yet
+    }
+    
     // Create a container for the selected datasets
     const datasetsContainer = document.createElement('div');
     datasetsContainer.className = 'selected-datasets-container';
     summaryContainer.appendChild(datasetsContainer);
-    
-    let allRequiredFiltersSelected = true;
     
     // Add each selected dataset with its filter information
     selectedDatasets.forEach(dataset => {
@@ -392,12 +425,44 @@ function checkRequiredFiltersSelected(dataset) {
 
 // Function to display the JSON references screen
 function showJsonReferences() {
+    // Check if generation filter is selected
+    const generationFilter = reportFiltersInstance.getGenerationFilter();
+    if (!generationFilter) {
+        showMessage('Please select the required generation filter', 'error');
+        return;
+    }
+    
+    // Also get any user filters
+    const userFilters = reportFiltersInstance.getUserFilters();
+
     const container = document.querySelector('.container');
     container.innerHTML = '';
     
     const header = document.createElement('h1');
     header.textContent = 'Dataset JSON References';
     container.appendChild(header);
+    
+    // Get the human-readable label for the filter from the ReportFilters class
+    const filterLabel = reportFiltersInstance.getFilterLabel(generationFilter);
+    
+    const generationFilterInfo = document.createElement('div');
+    generationFilterInfo.className = 'generation-filter-info';
+    generationFilterInfo.innerHTML = `
+      <p><strong>Generation Filter Applied:</strong> ${filterLabel}</p>
+      <p class="note">Note: The data shown below will be filtered according to this criteria.</p>
+    `;
+    
+    // Add user filters if any exist
+    if (userFilters && userFilters.length > 0) {
+        let userFiltersHtml = '<div class="additional-filters"><strong>Additional Filters:</strong><ul>';
+        userFilters.forEach(filter => {
+            userFiltersHtml += `<li>${filter.key}: ${filter.value}</li>`;
+        });
+        userFiltersHtml += '</ul></div>';
+        generationFilterInfo.innerHTML += userFiltersHtml;
+    }
+    
+    container.appendChild(generationFilterInfo);
     
     const description = document.createElement('p');
     description.className = 'json-description';
@@ -418,18 +483,19 @@ function showJsonReferences() {
         return datasets.find(ds => ds.id === selectedDs.id) || selectedDs;
     });
     
-    console.log("Complete selected datasets:", completeSelectedDatasets);
-    
     completeSelectedDatasets.forEach(dataset => {
+        // Ensure the dataset has field references
+        const processedDataset = generateFieldReferences(dataset);
+        
         const jsonCard = document.createElement('div');
         jsonCard.className = 'json-card';
         
         const title = document.createElement('h3');
-        title.textContent = dataset.name;
+        title.textContent = processedDataset.name;
         jsonCard.appendChild(title);
         
         // Selected filters summary
-        const filters = selectedFiltersMap[dataset.id] || { academicYears: [], userTypes: [] };
+        const filters = selectedFiltersMap[processedDataset.id] || { academicYears: [], userTypes: [] };
         
         const filtersSummary = document.createElement('div');
         filtersSummary.className = 'filters-summary';
@@ -445,9 +511,7 @@ function showJsonReferences() {
         jsonCard.appendChild(filtersSummary);
         
         // Field references table
-        if (dataset.jsonReference && dataset.jsonReference.fieldReferences) {
-            console.log(`Field references for ${dataset.name}:`, dataset.jsonReference.fieldReferences);
-            
+        if (processedDataset.jsonReference && processedDataset.jsonReference.fieldReferences) {
             const fieldReferencesSection = document.createElement('div');
             fieldReferencesSection.className = 'field-references-section';
             
@@ -477,7 +541,7 @@ function showJsonReferences() {
             const tableBody = document.createElement('tbody');
             
             // Add table rows for each field reference
-            const fieldRefs = dataset.jsonReference.fieldReferences;
+            const fieldRefs = processedDataset.jsonReference.fieldReferences;
             if (fieldRefs && fieldRefs.length > 0) {
                 fieldRefs.forEach(fieldRef => {
                     const row = document.createElement('tr');
@@ -546,9 +610,8 @@ function showJsonReferences() {
         
         const sampleValue = document.createElement('pre');
         sampleValue.className = 'sample-value';
-        if (dataset.jsonReference && dataset.jsonReference.sampleData) {
-            console.log(`Sample data for ${dataset.name}:`, dataset.jsonReference.sampleData);
-            sampleValue.textContent = JSON.stringify(dataset.jsonReference.sampleData, null, 2);
+        if (processedDataset.jsonReference && processedDataset.jsonReference.sampleData) {
+            sampleValue.textContent = JSON.stringify(processedDataset.jsonReference.sampleData, null, 2);
         } else {
             sampleValue.textContent = 'No sample data available';
         }
@@ -585,8 +648,12 @@ function showMessage(text, type) {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize ReportFilters globally
+    reportFiltersInstance = new ReportFilters();
+    
     initializeDatasetGrid();
 });
+
 // Add navigation for different POCs
 function initializeNavigation() {
     const nav = document.createElement('nav');
@@ -617,12 +684,12 @@ function initializeNavigation() {
   
   // Update the DOMContentLoaded event listener
   document.addEventListener('DOMContentLoaded', () => {
+    // Initialize ReportFilters globally
+    reportFiltersInstance = new ReportFilters();
+    
+    // Process all datasets with generateFieldReferences to ensure they have field references
+    datasets.forEach(dataset => generateFieldReferences(dataset));
+    
     initializeDatasetGrid();
     initializeNavigation();
-    
-    // Initialize report filters if on selection page
-    if (document.getElementById('datasetGrid')) {
-      const reportFilters = new ReportFilters();
-      reportFilters.initialize();
-    }
   });
