@@ -981,3 +981,107 @@ h1 {
   color: #faad14;
   display: block;
 }
+/* Additional styles for Required Generation Filters */
+
+/* Generation filters container */
+.generation-filters-info {
+  background-color: #f0f7ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+  border-left: 4px solid var(--primary-color);
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.generation-filters-info h4 {
+  color: var(--primary-color);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.generation-filters-info p {
+  margin-bottom: 10px;
+  color: #555;
+}
+
+/* Generation filters list */
+.generation-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.generation-filter-item {
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 14px;
+  color: #1890ff;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+}
+
+/* Dataset card's specific required generation filters */
+.selection-filter-item.generation-required {
+  background-color: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+  font-weight: 500;
+  position: relative;
+  padding-left: 22px;
+}
+
+.selection-filter-item.generation-required::before {
+  content: "★";
+  position: absolute;
+  left: 8px;
+  font-size: 10px;
+  color: #1890ff;
+}
+
+/* Section title for required generation filters */
+.selection-filter-group-title:has(+ .selection-filter-items .generation-required) {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+/* Warning styles for missing filters */
+.filter-warning {
+  color: #ff4d4f;
+  background-color: #fff2f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-top: 10px;
+  border-left: 3px solid #ff4d4f;
+  display: flex;
+  align-items: center;
+}
+
+.filter-warning::before {
+  content: "⚠️";
+  margin-right: 8px;
+}
+
+/* For datasets that display their required generation filters */
+.selected-dataset-card:has(.generation-required) {
+  border-left: 3px solid #1890ff;
+}
+
+/* Required Generation Filters in the JSON References view */
+.filters-summary p:has(strong:contains("Required Generation Filters")) {
+  color: #1890ff;
+  background-color: #f0f7ff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  margin-top: 8px;
+}

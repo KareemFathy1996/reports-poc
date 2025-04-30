@@ -1,3 +1,5 @@
+// Updates to ensure DatasetCreator properly initializes requiredGenerationFilters
+
 class DatasetCreator {
   constructor() {
     this.datasets = []; // Will be populated from data.js
@@ -9,7 +11,7 @@ class DatasetCreator {
         academicYears: { required: [], optional: [] },
         userTypes: { required: [], optional: [] }
       },
-      requiredGenerationFilters: [] // New property for required generation filters
+      requiredGenerationFilters: [] // Property for required generation filters
     };
     
     // Available generation filters
@@ -78,7 +80,7 @@ class DatasetCreator {
           </div>
         </div>
         
-        <!-- NEW SECTION: Required Generation Filters -->
+        <!-- SECTION: Required Generation Filters -->
         <h3>Required Generation Filters</h3>
         <div class="generation-filter-section">
           <p class="help-text">

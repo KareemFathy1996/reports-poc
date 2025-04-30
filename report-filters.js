@@ -126,6 +126,20 @@ class ReportFilters {
       .filter-value-error.show {
         display: block;
       }
+      
+      .generation-filter-help {
+        font-size: 13px;
+        color: #666;
+        margin-top: 5px;
+        font-style: italic;
+      }
+      
+      .selection-filter-item.generation-required {
+        background-color: #e6f7ff;
+        border-color: #91d5ff;
+        color: #1890ff;
+        font-weight: 500;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -157,6 +171,29 @@ class ReportFilters {
           <div id="studentIdError" class="filter-value-error">Please enter a Student ID</div>
         </div>
       `;
+    } else if (this.requiredGenerationFilter === "academicYear") {
+      filtersSection.innerHTML = `
+        <h4>Required Academic Year</h4>
+        <p>Enter the academic year to filter data for a specific time period.</p>
+        
+        <div class="form-group">
+          <label for="academicYearInput">Academic Year *</label>
+          <input type="text" id="academicYearInput" class="student-id-input" 
+                required placeholder="Enter Academic Year (e.g., 2023-2024)" 
+                value="${this.generationFilterValue || ''}">
+          <div id="academicYearError" class="filter-value-error">Please enter an Academic Year</div>
+        </div>
+      `;
+    } else if (this.requiredGenerationFilter === "currentYear" || this.requiredGenerationFilter === "verifiedData") {
+      // For boolean-type filters that don't need values
+      const filterLabel = this.filterLabels[this.requiredGenerationFilter] || this.requiredGenerationFilter;
+      filtersSection.innerHTML = `
+        <h4>Required Filter: ${filterLabel}</h4>
+        <p>This filter will be automatically applied to the data.</p>
+        <div class="generation-filter-help">No additional input required</div>
+      `;
+      // Set filter with no value
+      this.generationFilter = this.requiredGenerationFilter;
     } else {
       // Build the filter options from our filterLabels map
       let filterOptions = '<option value="">Select a filter</option>';
@@ -171,7 +208,7 @@ class ReportFilters {
         <p>These filters will be applied to all selected datasets when generating the report.</p>
         
         <div class="form-group">
-          <label for="generationFilter">Required Generation Filter *</label>
+          <label for="generationFilter">Generation Filter *</label>
           <select id="generationFilter" required>
             ${filterOptions}
           </select>
@@ -200,8 +237,11 @@ class ReportFilters {
   }
 
   updateFilterValueVisibility() {
-    // If we're using the Student ID UI, just return
-    if (this.requiredGenerationFilter === "studentId") return;
+    // If we're using specific UI for required filters, just return
+    if (this.requiredGenerationFilter === "studentId" || 
+        this.requiredGenerationFilter === "academicYear" ||
+        this.requiredGenerationFilter === "currentYear" ||
+        this.requiredGenerationFilter === "verifiedData") return;
     
     const filterValueContainer = document.getElementById('filterValueContainer');
     if (!filterValueContainer) return;
@@ -241,10 +281,12 @@ class ReportFilters {
     
     // Get validation error elements
     const studentIdError = document.getElementById('studentIdError');
+    const academicYearError = document.getElementById('academicYearError');
     const filterValueError = document.getElementById('filterValueError');
     
     // Get input elements
     const studentIdInput = document.getElementById('studentIdInput');
+    const academicYearInput = document.getElementById('academicYearInput');
     const filterValueInput = document.getElementById('filterValueInput');
     
     // Update error display for studentId specific UI
@@ -255,6 +297,17 @@ class ReportFilters {
       } else {
         studentIdInput.classList.add('error');
         studentIdError.classList.add('show');
+      }
+    }
+    
+    // Update error display for academicYear specific UI
+    if (this.requiredGenerationFilter === "academicYear" && academicYearInput && academicYearError) {
+      if (this.generationFilterValue && this.generationFilterValue.trim() !== '') {
+        academicYearInput.classList.remove('error');
+        academicYearError.classList.remove('show');
+      } else {
+        academicYearInput.classList.add('error');
+        academicYearError.classList.add('show');
       }
     }
     
@@ -274,7 +327,7 @@ class ReportFilters {
   }
 
   setupEventListeners() {
-    // Setup based on whether we're using the Student ID UI or the general filter UI
+    // Setup based on different UI types
     if (this.requiredGenerationFilter === "studentId") {
       const studentIdInput = document.getElementById('studentIdInput');
       if (studentIdInput) {
@@ -297,8 +350,34 @@ class ReportFilters {
           }
         });
       }
+    } else if (this.requiredGenerationFilter === "academicYear") {
+      const academicYearInput = document.getElementById('academicYearInput');
+      if (academicYearInput) {
+        // Remove existing listener if any
+        const newAcademicYearInput = academicYearInput.cloneNode(true);
+        if (academicYearInput.parentNode) {
+          academicYearInput.parentNode.replaceChild(newAcademicYearInput, academicYearInput);
+        }
+        
+        newAcademicYearInput.addEventListener('input', (e) => {
+          this.generationFilter = "academicYear";
+          this.generationFilterValue = e.target.value.trim();
+          
+          // Update validation state
+          this.updateProceedButtonState();
+          
+          // Call the global updateSelectionSummary function if it exists
+          if (typeof updateSelectionSummary === 'function') {
+            updateSelectionSummary();
+          }
+        });
+      }
+    } else if (this.requiredGenerationFilter === "currentYear" || this.requiredGenerationFilter === "verifiedData") {
+      // These filters don't need user input, they're already set
+      // Just ensure the proceed button is enabled if other requirements are met
+      this.updateProceedButtonState();
     } else {
-      // First remove any existing event listeners (to prevent duplicates)
+      // General filter UI
       const genFilterSelect = document.getElementById('generationFilter');
       if (genFilterSelect) {
         const newGenFilterSelect = genFilterSelect.cloneNode(true);

@@ -693,3 +693,84 @@ function initializeNavigation() {
     initializeDatasetGrid();
     initializeNavigation();
   });
+
+  // Function to get required generation filters based on selected datasets
+function getRequiredGenerationFilters() {
+    const generationFilters = new Set();
+    
+    // Check if any dataset has explicitly required generation filters
+    selectedDatasets.forEach(dataset => {
+      if (dataset.requiredGenerationFilters && Array.isArray(dataset.requiredGenerationFilters)) {
+        dataset.requiredGenerationFilters.forEach(filter => generationFilters.add(filter));
+      }
+    });
+    
+    // If we have explicit required filters, use those
+    if (generationFilters.size > 0) {
+      return Array.from(generationFilters);
+    }
+    
+    // Otherwise, use the legacy approach for backwards compatibility
+    
+    // Check if any dataset requires student ID
+    if (selectedDatasets.some(ds => ds.id === 1 || ds.id === 6 || 
+                                ds.name.includes('Student Performance') || 
+                                ds.name.includes('Student Growth'))) {
+      generationFilters.add('studentId');
+    }
+    
+    // Check if any dataset requires academic year filter
+    if (selectedDatasets.some(ds => ds.id === 3 || ds.id === 5 ||
+                                ds.name.includes('Curriculum Coverage') ||
+                                ds.name.includes('Department Performance'))) {
+      generationFilters.add('academicYear');
+    }
+    
+    return Array.from(generationFilters);
+  }
+  
+  // Function to update filter requirements based on selected datasets
+  function updateFilterRequirements() {
+    // Get the required filters
+    const requiredFilters = getRequiredGenerationFilters();
+    
+    // Update the reportFiltersInstance with the required filter
+    if (reportFiltersInstance && requiredFilters.length > 0) {
+      // Set the first filter as required
+      reportFiltersInstance.setRequiredGenerationFilter(requiredFilters[0]);
+      
+      // If there are multiple required filters, we can show a message
+      if (requiredFilters.length > 1) {
+        showMessage(
+          `Multiple generation filters required: ${requiredFilters.map(f => reportFiltersInstance.getFilterLabel(f)).join(', ')}. 
+           Using ${reportFiltersInstance.getFilterLabel(requiredFilters[0])} as the primary filter.`, 
+          'warning'
+        );
+      }
+    }
+    
+    // Update the UI based on the filters
+    const filterInfoSection = document.querySelector('.generation-filters-info');
+    if (filterInfoSection && requiredFilters.length > 0) {
+      // Update the filterInfoSection content to show requirements
+      const filtersList = filterInfoSection.querySelector('.generation-filters-list');
+      if (filtersList) {
+        filtersList.innerHTML = '';
+        
+        requiredFilters.forEach(filter => {
+          const filterItem = document.createElement('div');
+          filterItem.className = 'generation-filter-item';
+          
+          let filterLabel = filter;
+          // Apply human-readable labels
+          if (filter === 'studentId') filterLabel = 'Student ID';
+          if (filter === 'academicYear') filterLabel = 'Academic Year';
+          if (filter === 'currentYear') filterLabel = 'Current Year Only';
+          if (filter === 'verifiedData') filterLabel = 'Verified Data Only';
+          
+          filterItem.textContent = filterLabel;
+          filtersList.appendChild(filterItem);
+        });
+      }
+    }
+  }
